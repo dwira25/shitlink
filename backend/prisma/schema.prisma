@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MASTER
+  ADMIN
+}
+
+enum LinkStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(ADMIN)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  links     Link[]
+
+  @@map("users")
+}
+
+model Link {
+  id                Int        @id @default(autoincrement())
+  userId            Int        @map("user_id")
+  slug              String     @unique @db.VarChar(120)
+  destinationUrl    String     @map("destination_url") @db.Text
+  title             String
+  description       String?    @db.Text
+  status            LinkStatus @default(ACTIVE)
+  expiresAt         DateTime?  @map("expires_at")
+  ratingEnabled     Boolean    @default(false) @map("rating_enabled")
+  minRatingEnabled  Boolean    @default(false) @map("min_rating_enabled")
+  minRating         Int        @default(3) @map("min_rating")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks            Click[]
+  ratings           Rating[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("links")
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  linkId    Int      @map("link_id")
+  score     Int
+  comment   String?  @db.Text
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+  @@map("ratings")
+}
+
+model Click {
+  id        Int      @id @default(autoincrement())
+  linkId    Int      @map("link_id")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent") @db.Text
+  referer   String?  @db.Text
+  device    String?
+  browser   String?
+  os        String?
+  country   String?
+  clickedAt DateTime @default(now()) @map("clicked_at")
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId])
+  @@index([clickedAt])
+  @@map("clicks")
+}
